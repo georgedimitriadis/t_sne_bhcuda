@@ -87,7 +87,40 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
           no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, eta=DEFAULT_ETA,
           iterations=DEFAULT_ITERATIONS, early_exaggeration=DEFAULT_EARLY_EXAGGERATION,
           gpu_mem=DEFAULT_GPU_MEM, randseed=EMPTY_SEED, verbose=False):
+    """
+    Run t-sne on the sapplied samples (Nxsamples x Dfeatures array). It either:
+    1) Calls the t_sne_bhcuda.exe (which should be in the Path of the OS somehow - maybe in the Scripts folder)
+    which then run t-sne either on the CPU or the GPU)
+    or 2) Calls the sklearn t-sne module (which runs only on CPU).
 
+    Parameters
+    ----------
+    samples -- The N_examples X D_features array to t-sne
+    use_scikit -- If yes use the sklearn t-sne implementation. Otherwise use the t_sne_bhcuda.exe
+    files_dir -- The folder in which the t_sne_bhcuda.exe should look for the data_filename.dat and save the
+    results_filename.dat
+    results_filename -- The name of the file that the t_sne_bhcuda.exe saves the t-sne results in
+    data_filename -- The name of the file that the t_sne_bhcuda.exe looks into for data to t-sne. This data file
+    also has a header with all the parameters that the t_sne_bhcuda.exe needs to run.
+    no_dims -- Number of dimensions of the t-sne embedding
+    perplexity -- Defines the amount of samples whose distances are comparred to every sample (check sklearn and the
+    van der Maatens paper)
+    theta -- If > 0 then the algorithm run the burnes hat aproximation (with angle = theta). If = 0 then it runs the
+     exact version. Values smaller than 0.5 do not add to much error.
+    eta -- The learning rate
+    iterations -- The number of itterations (usually around 1000 should suffice)
+    early_exaggeration -- The amount by which the samples are initially pushed apart
+    gpu_mem -- If > 0 (and <= 1) then the t_sne_bhcuda.exe will run the eucledian distances calculations on the GPU
+    (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
+    == 0 then the t_sne_bhcuda.exe will run only on the CPU. It has no affect if use_scikit = True
+    randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
+    verbose -- Define verbosity
+
+    Returns
+    -------
+    A N_examples X no_dims array of the embeded examples
+
+    """
     if use_scikit:  # using python's scikit tsne implementation
         try:
             from sklearn.manifold import TSNE as tsne
@@ -126,6 +159,31 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
 
 
 def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_dims, iterations, gpu_mem, randseed):
+    """
+    Saves the samples array and all the rquired parameters in a filename file that the t_sne_bhcuda.exe can read
+
+    Parameters
+    ----------
+    samples -- The N_examples X D_features array to t-sne
+    files_dir -- The folder in which the t_sne_bhcuda.exe should look for the filename.dat
+    filename -- The name of the file that the t_sne_bhcuda.exe looks into for data to t-sne. This data file
+    also has a header with all the parameters that the t_sne_bhcuda.exe needs to run.
+    theta -- If > 0 then the algorithm run the burnes hat aproximation (with angle = theta). If = 0 then it runs the
+     exact version. Values smaller than 0.5 do not add to much error.
+    perplexity -- Defines the amount of samples whose distances are comparred to every sample (check sklearn and the
+    van der Maatens paper)
+    eta -- The learning rate
+    no_dims -- Number of dimensions of the t-sne embedding
+    iterations -- The number of itterations (usually around 1000 should suffice)
+    gpu_mem -- If > 0 (and <= 1) then the t_sne_bhcuda.exe will run the eucledian distances calculations on the GPU
+    (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
+    == 0 then the t_sne_bhcuda.exe will run only on the CPU.
+    randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
+
+    Returns
+    -------
+    Nothing. Just creates the file with the header and its data
+    """
     # Assume that the dimensionality of the first sample is representative for the whole batch
     sample_dim = len(samples[0])
     sample_count = len(samples)
@@ -143,6 +201,18 @@ def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_
 
 
 def load_tsne_result(files_dir, filename):
+    """
+    Load the file that has the t_sne_bhcuda.exe saves the results into.
+
+    Parameters
+    ----------
+    files_dir -- The folder in which the t_sne_bhcuda.exe should look for the filename.dat
+    filename -- The name of the file that the t_sne_bhcuda.exe saves the t-sne results in
+
+    Returns
+    -------
+    A N_examples X no_dims array of the embeded examples
+    """
     t_sne_results = []
     # Read and pass on the results
     with open(path_join(files_dir, filename), 'rb') as output_file:
