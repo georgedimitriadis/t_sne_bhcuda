@@ -18,11 +18,13 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 
 ##Notes for use
 ###Installation
- This is a conda package so you can install it using conda install -c georgedimitriadis t_sne_bhcuda. This will add the t_sne_bhcuda executable into the Scripts folder of the python environment that you installed the package in. The t_sne() function in the bhtsne_cuda script of the module will call this executable.
+ This is a conda package so you can install it using conda install -c georgedimitriadis t_sne_bhcuda. This will add the t_sne_bhcuda executable into the Scripts folder (for Windows) or the bin folder (for Linux) of the python environment that you installed the package in. The t_sne() function in the bhtsne_cuda script of the module will call this executable.
+
+ The whole code base (including the C++ and CUDA osurce code) will be downloaded into your Conda_folder\conda-bld\work.
 
  **Important note for Windows users:** If you have not used cuda before, then you need to be aware that windows by default will stop and restart the nvidia driver if it thinks that the gpu is stuck. That by default will happen if the gpu does anything that takes longer than 2 seconds. The current code will not work under these conditions with sample sizes over a certain number. If the code requires more than 2 seconds to calculate the distances then windows will restart the driver and the program will fail (you will get a notification of this at the bottom of your screen). In order to get windows off your back do what he says: [Nvidia Display Device Driver Stopped Responding And Has Recovered Successfully (FIX)](https://www.youtube.com/watch?v=QQJ9T0oY-Jk). Also have a look here for MSDN info on the relative registry values [TDR Registry Keys](https://msdn.microsoft.com/en-us/library/windows/hardware/ff569918%28v=vs.85%29.aspx).
 
 ###Use
-Read the example in the bhtsne_cuda script on how to call t_sne. 
+Read the example in the bhtsne_cuda script on how to call t_sne. A very extensive documentation for the t-sne specific parameters can also be found in the sklearn.manifold.TSNE package.
 
 If you want to use t-sne on spikes as detected by the spikedetect portion of the phy module then check out the t_sne_spikes script. The result of this operation is a 2 x Nspikes array that will be saved in the same directory that the .kwik file you provided to the function is in. The phy module will be able to detect this array (saved in .npy format) and display in its GUI the results of the t-sne operation superimposing clustering information if it exists.
