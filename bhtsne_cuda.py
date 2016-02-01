@@ -18,7 +18,7 @@ The data into the t_sne function (or the save_data_for_tsne function) is a sampl
 
 Example
 
-import bhtsne_cuda
+import t_sne_bhcuda.bhtsne_cuda as tsne_bhcuda
 import matplotlib.pyplot as plt
 
 perplexity = 50.0
@@ -26,7 +26,7 @@ theta = 0.5
 learning_rate = 200.0
 iterations = 2000
 gpu_mem = 0.8
-t_sne_result = bhtsne_cuda.t_sne(samples=data_for_tsne, tmp_dir_path=r'C:\temp\tsne_results',
+t_sne_result = tsne_bhcuda.t_sne(samples=data_for_tsne, files_dir=r'C:\temp\tsne_results',
                         no_dims=2, perplexity=perplexity, eta=learning_rate, theta=theta,
                         iterations=iterations, gpu_mem=gpu_mem, randseed=-1, verbose=3)
 t_sne_result = np.transpose(t_sne_result)
@@ -59,14 +59,13 @@ from struct import calcsize, pack, unpack
 from subprocess import Popen, PIPE
 from platform import system
 import sys
+import importlib as imp
 
 ### Constants
 IS_WINDOWS = True if system() == 'Windows' else False
-BH_TSNE_BIN_PATH = path_join(dirname(__file__), 'bin', 'windows', 't_sne_bhcuda.exe') if IS_WINDOWS \
-                     else path_join(dirname(__file__), 'bin', 'linux', 't_sne_bhcuda')
-assert isfile(BH_TSNE_BIN_PATH), ('Unable to find the t_sne_bhcuda.exe binary in the '
-                                  'same directory as this script, have you forgotten to compile it?: {}'
-                                  ).format(BH_TSNE_BIN_PATH)
+dir_to_exe = path_join(dirname(dirname(dirname(dirname(__file__)))), 'Scripts', )
+TSNE_PATH = path_join(dir_to_exe, 't_sne_bhcuda.exe') if IS_WINDOWS \
+                     else path_join(dir_to_exe, 't_sne_bhcuda')
 
 # Default hyper-parameter values
 DEFAULT_NO_DIMS = 2
@@ -76,7 +75,7 @@ DEFAULT_THETA = 0.5
 EMPTY_SEED = -1
 DEFAULT_ETA = 200
 DEFAULT_ITERATIONS = 500
-DEFAULT_GPU_MEM = 0
+DEFAULT_GPU_MEM = 0.8
 ###
 
 
@@ -84,13 +83,18 @@ def _read_unpack(fmt, fh):
     return unpack(fmt, fh.read(calcsize(fmt)))
 
 
-def t_sne(samples, use_scikit=False, tmp_dir_path=None, results_filename='result.dat', data_filename='data.dat',
+def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.dat', data_filename='data.dat',
           no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, eta=DEFAULT_ETA,
-          iterations=DEFAULT_ITERATIONS, early_exaggeration = DEFAULT_EARLY_EXAGGERATION,
+          iterations=DEFAULT_ITERATIONS, early_exaggeration=DEFAULT_EARLY_EXAGGERATION,
           gpu_mem=DEFAULT_GPU_MEM, randseed=EMPTY_SEED, verbose=False):
 
     if use_scikit:  # using python's scikit tsne implementation
-        from sklearn.manifold import TSNE as tsne
+        try:
+            from sklearn.manifold import TSNE as tsne
+        except ImportError:
+            print('You do not have sklearn installed. Try calling t_sne with use_scikit=False'
+                  'and gpu_mem=0 if you do not want to run the code in GPU.')
+            return None
         if DEFAULT_THETA > 0:
             method = 'barnes_hut'
         elif DEFAULT_THETA == 0:
@@ -104,30 +108,29 @@ def t_sne(samples, use_scikit=False, tmp_dir_path=None, results_filename='result
         return t_sne_results
 
     else:  # using the C++/cuda implementation
-        save_data_for_tsne(samples, tmp_dir_path, data_filename, theta, perplexity,
+        save_data_for_tsne(samples, files_dir, data_filename, theta, perplexity,
                            eta, no_dims, iterations, gpu_mem, randseed)
         # Call t_sne_bhcuda and let it do its thing
-        print((abspath(BH_TSNE_BIN_PATH), ))
-        with Popen([abspath(BH_TSNE_BIN_PATH), ], cwd=tmp_dir_path, stdout=PIPE, bufsize=1, universal_newlines=True) \
-                as t_sne_gpu_p:
-            for line in iter(t_sne_gpu_p.stdout):
+        with Popen([TSNE_PATH, ], cwd=files_dir, stdout=PIPE, bufsize=1, universal_newlines=True) \
+                as t_sne_bhcuda_p:
+            for line in iter(t_sne_bhcuda_p.stdout):
                 print(line, end='')
                 sys.stdout.flush()
-            t_sne_gpu_p.wait()
-        assert not t_sne_gpu_p.returncode, ('ERROR: Call to t_sne_bhcuda exited '
-                                            'with a non-zero return code exit status, please ' +
-                                            ('enable verbose mode and ' if not verbose else '') +
-                                            'refer to the t_sne_bhcuda output for further details')
+            t_sne_bhcuda_p.wait()
+        assert not t_sne_bhcuda_p.returncode, ('ERROR: Call to t_sne_bhcuda exited '
+                                               'with a non-zero return code exit status, please ' +
+                                               ('enable verbose mode and ' if not verbose else '') +
+                                               'refer to the t_sne output for further details')
 
-        return load_tsne_result(tmp_dir_path, results_filename)
+        return load_tsne_result(files_dir, results_filename)
 
 
-def save_data_for_tsne(samples, tmp_dir_path, filename, theta, perplexity, eta, no_dims, iterations, gpu_mem, randseed):
+def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_dims, iterations, gpu_mem, randseed):
     # Assume that the dimensionality of the first sample is representative for the whole batch
     sample_dim = len(samples[0])
     sample_count = len(samples)
 
-    with open(path_join(tmp_dir_path, filename), 'wb') as data_file:
+    with open(path_join(files_dir, filename), 'wb') as data_file:
         # Write the t_sne_bhcuda header
         data_file.write(pack('iidddiif', sample_count, sample_dim, theta,
                              perplexity, eta, no_dims, iterations, gpu_mem))
@@ -139,10 +142,10 @@ def save_data_for_tsne(samples, tmp_dir_path, filename, theta, perplexity, eta, 
             data_file.write(pack('i', randseed))
 
 
-def load_tsne_result(tmp_dir_path, filename):
+def load_tsne_result(files_dir, filename):
     t_sne_results = []
     # Read and pass on the results
-    with open(path_join(tmp_dir_path, filename), 'rb') as output_file:
+    with open(path_join(files_dir, filename), 'rb') as output_file:
         # The first two integers are just the number of samples and the dimensionality
         result_samples, result_dims = _read_unpack('ii', output_file)
         # Collect the results, but they may be out of order
