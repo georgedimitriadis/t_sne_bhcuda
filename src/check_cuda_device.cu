@@ -74,7 +74,7 @@ void exit_on_cuda_error(char* kernel_name) {
 /* ----------------------------------------------------------------------------------------------- */
 
 
-void initialize_cuda_device(int* ncuda_devices) {
+void initialize_cuda_device(int* ncuda_devices, int verbose) {
 
 	int device;
 	int device_count;
@@ -162,38 +162,38 @@ void initialize_cuda_device(int* ncuda_devices) {
 	}
 
 	// outputs device infos to file
+	if (verbose>1){
+		//printf("GPU device for rank: %d\n\n", myrank);
+		printf("\n");
+		// display device properties
+		printf("Device Name = %s\n", deviceProp.name);
+		printf("multiProcessorCount: %d\n", deviceProp.multiProcessorCount);
+		printf("totalGlobalMem (in MB): %f\n", (unsigned long)deviceProp.totalGlobalMem / (1024.f * 1024.f));
+		printf("totalGlobalMem (in GB): %f\n", (unsigned long)deviceProp.totalGlobalMem / (1024.f * 1024.f * 1024.f));
+		printf("sharedMemPerBlock (in bytes): %lu\n", (unsigned long)deviceProp.sharedMemPerBlock);
+		printf("Maximum number of threads per block: %d\n", deviceProp.maxThreadsPerBlock);
+		printf("Maximum size of each dimension of a block: %d x %d x %d\n",
+			deviceProp.maxThreadsDim[0], deviceProp.maxThreadsDim[1], deviceProp.maxThreadsDim[2]);
+		printf("Maximum sizes of each dimension of a grid: %d x %d x %d\n",
+			deviceProp.maxGridSize[0], deviceProp.maxGridSize[1], deviceProp.maxGridSize[2]);
+		printf("Compute capability of the device = %d.%d\n", deviceProp.major, deviceProp.minor);
+		if (deviceProp.canMapHostMemory){
+			printf("canMapHostMemory: TRUE\n");
+		}
+		else{
+			printf("canMapHostMemory: FALSE\n");
+		}
+		if (deviceProp.deviceOverlap){
+			printf("deviceOverlap: TRUE\n");
+		}
+		else{
+			printf("deviceOverlap: FALSE\n");
+		}
 
-	//printf("GPU device for rank: %d\n\n", myrank);
-	printf("\n");
-	// display device properties
-	printf("Device Name = %s\n", deviceProp.name);
-	printf("multiProcessorCount: %d\n", deviceProp.multiProcessorCount);
-	printf("totalGlobalMem (in MB): %f\n", (unsigned long)deviceProp.totalGlobalMem / (1024.f * 1024.f));
-	printf("totalGlobalMem (in GB): %f\n", (unsigned long)deviceProp.totalGlobalMem / (1024.f * 1024.f * 1024.f));
-	printf("sharedMemPerBlock (in bytes): %lu\n", (unsigned long)deviceProp.sharedMemPerBlock);
-	printf("Maximum number of threads per block: %d\n", deviceProp.maxThreadsPerBlock);
-	printf("Maximum size of each dimension of a block: %d x %d x %d\n",
-		deviceProp.maxThreadsDim[0], deviceProp.maxThreadsDim[1], deviceProp.maxThreadsDim[2]);
-	printf("Maximum sizes of each dimension of a grid: %d x %d x %d\n",
-		deviceProp.maxGridSize[0], deviceProp.maxGridSize[1], deviceProp.maxGridSize[2]);
-	printf("Compute capability of the device = %d.%d\n", deviceProp.major, deviceProp.minor);
-	if (deviceProp.canMapHostMemory){
-		printf("canMapHostMemory: TRUE\n");
+		// outputs initial memory infos via cudaMemGetInfo()
+		print_device_memory();
+		printf("\n");
 	}
-	else{
-		printf("canMapHostMemory: FALSE\n");
-	}
-	if (deviceProp.deviceOverlap){
-		printf("deviceOverlap: TRUE\n");
-	}
-	else{
-		printf("deviceOverlap: FALSE\n");
-	}
-
-	// outputs initial memory infos via cudaMemGetInfo()
-	print_device_memory();
-	printf("\n");
-
 
 	// make sure that the device has compute capability >= 1.3
 	if (deviceProp.major < 1){

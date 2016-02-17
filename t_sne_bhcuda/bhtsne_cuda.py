@@ -54,7 +54,7 @@ Version:    2016-01-20
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from os.path import abspath, dirname, isfile, join as path_join
+from os.path import abspath, pardir, dirname, isfile, isdir, join as path_join
 from struct import calcsize, pack, unpack
 from subprocess import Popen, PIPE
 from platform import system
@@ -62,20 +62,21 @@ import sys
 import importlib as imp
 
 ### Constants
-IS_WINDOWS = True if system() == 'Windows' else False
-dir_to_exe = path_join(dirname(dirname(dirname(dirname(__file__)))), 'Scripts', )
-TSNE_PATH = path_join(dir_to_exe, 't_sne_bhcuda.exe') if IS_WINDOWS \
-                     else path_join(dir_to_exe, 't_sne_bhcuda')
+#IS_WINDOWS = True if system() == 'Windows' else False
+#dir_to_exe = path_join(dirname(dirname(dirname(dirname(__file__)))), 'Scripts', )
+#TSNE_PATH = path_join(dir_to_exe, 't_sne_bhcuda.exe') if IS_WINDOWS \
+#                     else path_join(dir_to_exe, 't_sne_bhcuda')
 
 # Default hyper-parameter values
 DEFAULT_NO_DIMS = 2
 DEFAULT_PERPLEXITY = 50.0
 DEFAULT_EARLY_EXAGGERATION = 4.0
 DEFAULT_THETA = 0.5
-EMPTY_SEED = -1
+DEFAULT_RANDOM_SEED = -1
 DEFAULT_ETA = 200
 DEFAULT_ITERATIONS = 500
 DEFAULT_GPU_MEM = 0.8
+DEFAULT_SEED = 0
 ###
 
 
@@ -83,10 +84,29 @@ def _read_unpack(fmt, fh):
     return unpack(fmt, fh.read(calcsize(fmt)))
 
 
+def _find_exe_dir():
+    exe_dir = 'bin'
+    exe_file = 't_sne_bhcuda'
+    if system() == 'Windows':
+        exe_dir = 'Scripts'
+        exe_file = 't_sne_bhcuda.exe'
+
+    dir_to_exe = None
+    current_dir = dirname(__file__)
+    while dir_to_exe==None:
+        if isdir(path_join(current_dir, exe_dir)):
+            dir_to_exe = path_join(current_dir, exe_dir)
+        current_dir = dirname(current_dir)
+
+    tsne_path = path_join(dir_to_exe, exe_file)
+
+    return tsne_path
+
+
 def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.dat', data_filename='data.dat',
           no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, eta=DEFAULT_ETA,
-          iterations=DEFAULT_ITERATIONS, early_exaggeration=DEFAULT_EARLY_EXAGGERATION,
-          gpu_mem=DEFAULT_GPU_MEM, randseed=EMPTY_SEED, verbose=False):
+          iterations=DEFAULT_ITERATIONS, seed=DEFAULT_SEED, early_exaggeration=DEFAULT_EARLY_EXAGGERATION,
+          gpu_mem=DEFAULT_GPU_MEM, randseed=DEFAULT_RANDOM_SEED, verbose=3):
     """
     Run t-sne on the sapplied samples (Nxsamples x Dfeatures array). It either:
     1) Calls the t_sne_bhcuda.exe (which should be in the Path of the OS somehow - maybe in the Scripts folder)
@@ -109,12 +129,18 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
      exact version. Values smaller than 0.5 do not add to much error.
     eta -- The learning rate
     iterations -- The number of itterations (usually around 1000 should suffice)
-    early_exaggeration -- The amount by which the samples are initially pushed apart
+    early_exaggeration -- The amount by which the samples are initially pushed apart. Used only in the sckit-learn
+    version
+    seed -- Set to a number > 0 if the amount of samples is too large to t-sne. Then the algorithm will t-sne the first
+    seed number of samples. Then it will compare the euclidean distance between every other sample and these t-sned
+    samples. For each non t-sned sample it will find the 5 closest t-sned samples and place the new sample on the point
+    of the t-sne space  that is given by the center of mass of those 5 closest ssamples. The mass of each closest
+    sample is defined as the inverse of its euclidean distance to the new sample.
     gpu_mem -- If > 0 (and <= 1) then the t_sne_bhcuda.exe will run the eucledian distances calculations on the GPU
     (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
     == 0 then the t_sne_bhcuda.exe will run only on the CPU. It has no affect if use_scikit = True
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
-    verbose -- Define verbosity
+    verbose -- Define verbosity (0 = No output, 1 = Basic output, 2 = Full output)
 
     Returns
     -------
@@ -128,23 +154,23 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
             print('You do not have sklearn installed. Try calling t_sne with use_scikit=False'
                   'and gpu_mem=0 if you do not want to run the code in GPU.')
             return None
-        if DEFAULT_THETA > 0:
+        if theta > 0:
             method = 'barnes_hut'
-        elif DEFAULT_THETA == 0:
+        elif theta == 0:
             method = 'exact'
         model = tsne(n_components=2, perplexity=perplexity, early_exaggeration=early_exaggeration,
-                     learning_rate=eta, n_iter=DEFAULT_ITERATIONS, n_iter_without_progress=500,
-                     min_grad_norm=1e-7, metric="euclidean", init="random", verbose=verbose,
-                     random_state=None, method='barnes_hut', angle=theta)
+                     learning_rate=eta, n_iter=iterations, n_iter_without_progress=iterations,
+                     min_grad_norm=0, metric="euclidean", init="random", verbose=verbose,
+                     random_state=None, method=method, angle=theta)
         t_sne_results = model.fit_transform(samples)
 
         return t_sne_results
 
     else:  # using the C++/cuda implementation
         save_data_for_tsne(samples, files_dir, data_filename, theta, perplexity,
-                           eta, no_dims, iterations, gpu_mem, randseed)
+                           eta, no_dims, iterations, seed, gpu_mem, randseed)
         # Call t_sne_bhcuda and let it do its thing
-        with Popen([TSNE_PATH, ], cwd=files_dir, stdout=PIPE, bufsize=1, universal_newlines=True) \
+        with Popen([_find_exe_dir(), ], cwd=files_dir, stdout=PIPE, bufsize=1, universal_newlines=True) \
                 as t_sne_bhcuda_p:
             for line in iter(t_sne_bhcuda_p.stdout):
                 print(line, end='')
@@ -158,7 +184,8 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
         return load_tsne_result(files_dir, results_filename)
 
 
-def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_dims, iterations, gpu_mem, randseed):
+def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_dims, iterations, seed, gpu_mem,
+                       verbose, randseed):
     """
     Saves the samples array and all the rquired parameters in a filename file that the t_sne_bhcuda.exe can read
 
@@ -175,9 +202,11 @@ def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_
     eta -- The learning rate
     no_dims -- Number of dimensions of the t-sne embedding
     iterations -- The number of itterations (usually around 1000 should suffice)
+    seed -- Set to a number > 0 if the amount of samples is too large to t-sne
     gpu_mem -- If > 0 (and <= 1) then the t_sne_bhcuda.exe will run the eucledian distances calculations on the GPU
     (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
     == 0 then the t_sne_bhcuda.exe will run only on the CPU.
+    verbose -- controls the printed output of the code
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
 
     Returns
@@ -190,13 +219,13 @@ def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_
 
     with open(path_join(files_dir, filename), 'wb') as data_file:
         # Write the t_sne_bhcuda header
-        data_file.write(pack('iidddiif', sample_count, sample_dim, theta,
-                             perplexity, eta, no_dims, iterations, gpu_mem))
+        data_file.write(pack('iidddiiifi', sample_count, sample_dim, theta, perplexity,
+                            eta, no_dims, iterations, seed, gpu_mem, verbose))
         # Then write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
         # Write random seed if specified
-        if randseed != EMPTY_SEED:
+        if randseed != DEFAULT_RANDOM_SEED:
             data_file.write(pack('i', randseed))
 
 

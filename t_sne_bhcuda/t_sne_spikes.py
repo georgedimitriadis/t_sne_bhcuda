@@ -6,9 +6,10 @@ import t_sne_bhcuda.bhtsne_cuda as TSNE
 import time
 
 
-def t_sne_spikes(kwx_file_path, mask_data=False, path_to_save_tmp_data=None, indices_of_spikes_to_tsne=None,
-                 use_scikit=False, perplexity=50.0, theta=0.5, iterations=1000, gpu_mem=0.8,
-                 no_dims=2, eta=200, early_exaggeration=4.0, randseed=-1, verbose=True):
+def t_sne_spikes(kwx_file_path, hdf5_dir_to_pca=r'channel_groups/1/features_masks', mask_data=False,
+                 path_to_save_tmp_data=None, indices_of_spikes_to_tsne=None, use_scikit=False, perplexity=50.0,
+                 theta=0.5, iterations=1000, seed=0, gpu_mem=0.8, no_dims=2, eta=200, early_exaggeration=4.0,
+                 randseed=-1, verbose=2):
     """
     Uses the PCA (masked or not) results of the spikedetection that the phy module does to embed the 3 X N_channels
     dimensional spikes into no_dims (usually 2) dimensions for visualization and faster manual sorting purposes.
@@ -22,6 +23,7 @@ def t_sne_spikes(kwx_file_path, mask_data=False, path_to_save_tmp_data=None, ind
     ----------
     kwx_file_path -- The path where the .kwx file is resulting from phy's spikedetect (the file that has the PCA and
      mask results for each spike)
+    hdf5_dir_to_pca -- The path in the kwx (hdf5) file that the pca and mask matrices are saved in
     mask_data -- Use the masking that spikedetect provides on the PCA results or not
     path_to_save_tmp_data -- If it is not set, the t-sne intermediate files (see bhtsne_cuda.py) will be saved in
     the kwx_file_path.
@@ -39,7 +41,7 @@ def t_sne_spikes(kwx_file_path, mask_data=False, path_to_save_tmp_data=None, ind
     eta -- The learning rate
     early_exaggeration -- The amount by which the samples are initially pushed apart
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
-    verbose -- Define verbosity
+    verbose -- Define verbosity (0 = No output, 1 = Basic output, 2 = Full output)
 
     Returns
     -------
@@ -48,7 +50,8 @@ def t_sne_spikes(kwx_file_path, mask_data=False, path_to_save_tmp_data=None, ind
     """
 
     h5file = h5.File(kwx_file_path, mode='r')
-    pca_and_masks = np.array(list(h5file['channel_groups/0/features_masks']))
+    pca_and_masks = np.array(list(h5file[hdf5_dir_to_pca]))
+    h5file.close()
     masks = np.array(pca_and_masks[:, :, 1])
     pca_features = np.array(pca_and_masks[:, :, 0])
     masked_pca_features = pca_features
@@ -69,11 +72,11 @@ def t_sne_spikes(kwx_file_path, mask_data=False, path_to_save_tmp_data=None, ind
 
     t0 = time.time()
     t_tsne = TSNE.t_sne(data_for_tsne, use_scikit=use_scikit,files_dir=path_to_save_tmp_data,
-                        no_dims=2, perplexity=perplexity, eta=eta, theta=theta, iterations=iterations,
+                        no_dims=2, perplexity=perplexity, eta=eta, theta=theta, iterations=iterations, seed=seed,
                         early_exaggeration=early_exaggeration, gpu_mem=gpu_mem, randseed=randseed, verbose=verbose)
     t_tsne = np.transpose(t_tsne)
     t1 = time.time()
-    if verbose:
+    if verbose > 1:
         print("CUDA t-sne took {} seconds, ({} minutes)".format(t1-t0, (t1-t0)/60))
 
     np.save(join(dirname(kwx_file_path), 't_sne_results.npy'), t_tsne)

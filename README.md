@@ -18,7 +18,7 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 
 ##Notes for use
 ###Installation
- This is a conda package so you can install it using conda install -c georgedimitriadis t_sne_bhcuda. This will add the t_sne_bhcuda executable into the Scripts folder (for Windows) or the bin folder (for Linux) of the python environment that you installed the package in. The t_sne() function in the bhtsne_cuda script of the module will call this executable.
+ This is a conda package so you can install it using conda install -c georgedimitriadis t_sne_bhcuda (after you have done conda install anaconda-client to install access to the anaconda cloud where the code is hosted). This will add the t_sne_bhcuda executable into the Scripts folder (for Windows) or the bin folder (for Linux) of the python environment that you installed the package in. The t_sne() function in the bhtsne_cuda script of the module will call this executable.
 
  The whole code base (including the C++ and CUDA osurce code) will be downloaded into your Conda_folder\conda-bld\work.
 

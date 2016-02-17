@@ -251,7 +251,7 @@ private:
         
         // Compute (or read off GPU pre calculated) distance between target and current node
 		double dist;
-		if (all_euclidean_distances->size() > 0){
+		if (all_euclidean_distances){
 			dist = all_euclidean_distances->at(target.index())[_items[node->index].index()];
 		}
 		else{
