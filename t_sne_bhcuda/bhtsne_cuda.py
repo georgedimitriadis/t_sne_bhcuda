@@ -106,7 +106,7 @@ def _find_exe_dir():
 def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.dat', data_filename='data.dat',
           no_dims=DEFAULT_NO_DIMS, perplexity=DEFAULT_PERPLEXITY, theta=DEFAULT_THETA, eta=DEFAULT_ETA,
           iterations=DEFAULT_ITERATIONS, seed=DEFAULT_SEED, early_exaggeration=DEFAULT_EARLY_EXAGGERATION,
-          gpu_mem=DEFAULT_GPU_MEM, randseed=DEFAULT_RANDOM_SEED, verbose=3):
+          gpu_mem=DEFAULT_GPU_MEM, randseed=DEFAULT_RANDOM_SEED, verbose=2):
     """
     Run t-sne on the sapplied samples (Nxsamples x Dfeatures array). It either:
     1) Calls the t_sne_bhcuda.exe (which should be in the Path of the OS somehow - maybe in the Scripts folder)
@@ -168,7 +168,7 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
 
     else:  # using the C++/cuda implementation
         save_data_for_tsne(samples, files_dir, data_filename, theta, perplexity,
-                           eta, no_dims, iterations, seed, gpu_mem, randseed)
+                           eta, no_dims, iterations, seed, gpu_mem, verbose, randseed)
         # Call t_sne_bhcuda and let it do its thing
         with Popen([_find_exe_dir(), ], cwd=files_dir, stdout=PIPE, bufsize=1, universal_newlines=True) \
                 as t_sne_bhcuda_p:
