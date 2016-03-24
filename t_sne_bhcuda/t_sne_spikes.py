@@ -58,7 +58,7 @@ def t_sne_spikes(kwx_file_path, hdf5_dir_to_pca=r'channel_groups/1/features_mask
     if mask_data:
         masked_pca_features = pca_features * masks
 
-    if not indices_of_spikes_to_tsne:
+    if indices_of_spikes_to_tsne is None:
         num_of_spikes = np.size(masked_pca_features, 0)
         indices_of_spikes_to_tsne = range(num_of_spikes)
     data_for_tsne = masked_pca_features[indices_of_spikes_to_tsne, :]
