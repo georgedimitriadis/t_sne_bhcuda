@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
 A simple Python wrapper for the t_sne_bhcuda binary.
 
 Note: The script does some minimal sanity checking of the input, but don't
@@ -28,44 +28,24 @@ iterations = 2000
 gpu_mem = 0.8
 t_sne_result = tsne_bhcuda.t_sne(samples=data_for_tsne, files_dir=r'C:\temp\tsne_results',
                         no_dims=2, perplexity=perplexity, eta=learning_rate, theta=theta,
-                        iterations=iterations, gpu_mem=gpu_mem, randseed=-1, verbose=3)
+                        iterations=iterations, gpu_mem=gpu_mem, randseed=-1, verbose=2)
 t_sne_result = np.transpose(t_sne_result)
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.scatter(t_sne_result[0], t_sne_result[1])
 
-
-Author:     George Dimitriadis    <george dimitriadis uk>
-Version:    2016-01-20
-'''
-
-# Copyright (c) 2013, Pontus Stenetorp <pontus stenetorp se>
-#
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+Original Author:    Pontus Stenetorp
+Author:             George Dimitriadis    <george dimitriadis uk>
+Version:            0.2.0
+"""
 
 from os.path import abspath, pardir, dirname, isfile, isdir, join as path_join
 from struct import calcsize, pack, unpack
 from subprocess import Popen, PIPE
 from platform import system
 import sys
-import importlib as imp
 
-### Constants
-#IS_WINDOWS = True if system() == 'Windows' else False
-#dir_to_exe = path_join(dirname(dirname(dirname(dirname(__file__)))), 'Scripts', )
-#TSNE_PATH = path_join(dir_to_exe, 't_sne_bhcuda.exe') if IS_WINDOWS \
-#                     else path_join(dir_to_exe, 't_sne_bhcuda')
 
 # Default hyper-parameter values
 DEFAULT_NO_DIMS = 2
@@ -109,8 +89,8 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
           gpu_mem=DEFAULT_GPU_MEM, randseed=DEFAULT_RANDOM_SEED, verbose=2):
     """
     Run t-sne on the sapplied samples (Nxsamples x Dfeatures array). It either:
-    1) Calls the t_sne_bhcuda.exe (which should be in the Path of the OS somehow - maybe in the Scripts folder)
-    which then run t-sne either on the CPU or the GPU)
+    1) Calls the t_sne_bhcuda.exe (which should be in the Path of the OS somehow - maybe in the Scripts folder for
+    Windows or the python/bin folder for Linux) which then runs t-sne either on the CPU or the GPU
     or 2) Calls the sklearn t-sne module (which runs only on CPU).
 
     Parameters
@@ -126,7 +106,7 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
     perplexity -- Defines the amount of samples whose distances are comparred to every sample (check sklearn and the
     van der Maatens paper)
     theta -- If > 0 then the algorithm run the burnes hat aproximation (with angle = theta). If = 0 then it runs the
-     exact version. Values smaller than 0.5 do not add to much error.
+    exact version. Values smaller than 0.2 do not add to much error.
     eta -- The learning rate
     iterations -- The number of itterations (usually around 1000 should suffice)
     early_exaggeration -- The amount by which the samples are initially pushed apart. Used only in the sckit-learn
@@ -140,7 +120,9 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
     (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
     == 0 then the t_sne_bhcuda.exe will run only on the CPU. It has no affect if use_scikit = True
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
-    verbose -- Define verbosity (0 = No output, 1 = Basic output, 2 = Full output)
+    verbose -- Define verbosity. 0 = No output, 1 = Basic output, 2 = Full output, 3 = Also save t-sne results in
+    interim files after every iteration. Option 3 is used to save all steps of t-sne to explore the way the algorithm
+    seperates the data (good for movies).
 
     Returns
     -------
@@ -206,14 +188,16 @@ def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_
     gpu_mem -- If > 0 (and <= 1) then the t_sne_bhcuda.exe will run the eucledian distances calculations on the GPU
     (if possible) and will use (gpu_mem * 100) per cent of the available gpu memory to temporarily store results. If
     == 0 then the t_sne_bhcuda.exe will run only on the CPU.
-    verbose -- controls the printed output of the code
+    verbose -- Define verbosity. 0 = No output, 1 = Basic output, 2 = Full output, 3 = Also save t-sne results in
+    interim files after every iteration. Option 3 is used to save all steps of t-sne to explore the way the algorithm
+    seperates the data (good for movies).
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
 
     Returns
     -------
     Nothing. Just creates the file with the header and its data
     """
-    # Assume that the dimensionality of the first sample is representative for the whole batch
+
     sample_dim = len(samples[0])
     sample_count = len(samples)
 
@@ -221,7 +205,7 @@ def save_data_for_tsne(samples, files_dir, filename, theta, perplexity, eta, no_
         # Write the t_sne_bhcuda header
         data_file.write(pack('iidddiiifi', sample_count, sample_dim, theta, perplexity,
                             eta, no_dims, iterations, seed, gpu_mem, verbose))
-        # Then write the data
+        # Write the data
         for sample in samples:
             data_file.write(pack('{}d'.format(len(sample)), *sample))
         # Write random seed if specified
@@ -245,7 +229,7 @@ def load_tsne_result(files_dir, filename):
     t_sne_results = []
     # Read and pass on the results
     with open(path_join(files_dir, filename), 'rb') as output_file:
-        # The first two integers are just the number of samples and the dimensionality
+        # The first two integers are the number of samples and the dimensionality
         result_samples, result_dims = _read_unpack('ii', output_file)
         # Collect the results, but they may be out of order
         results = [_read_unpack('{}d'.format(result_dims), output_file)
@@ -258,7 +242,5 @@ def load_tsne_result(files_dir, filename):
         for _, result in results:
             t_sne_results.append(result)
         return t_sne_results
-        # The last piece of data is the cost for each sample, we ignore it
-        #read_unpack('{}d'.format(sample_count), output_file)
 
 

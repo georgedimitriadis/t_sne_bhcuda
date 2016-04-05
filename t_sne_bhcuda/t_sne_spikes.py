@@ -41,7 +41,9 @@ def t_sne_spikes(kwx_file_path, hdf5_dir_to_pca=r'channel_groups/1/features_mask
     eta -- The learning rate
     early_exaggeration -- The amount by which the samples are initially pushed apart
     randseed -- Set the random seed for the initiallization of the samples on the no_dims plane.
-    verbose -- Define verbosity (0 = No output, 1 = Basic output, 2 = Full output)
+    verbose -- Define verbosity. 0 = No output, 1 = Basic output, 2 = Full output, 3 = Also save t-sne results in
+    interim files after every iteration. Option 3 is used to save all steps of t-sne to explore the way the algorithm
+    seperates the data (good for movies).
 
     Returns
     -------

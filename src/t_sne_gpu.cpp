@@ -50,15 +50,15 @@
 using namespace std;
 
 // Perform t-SNE
-void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, double eta, int iterations, float gpu_mem, int verbose) {
+void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, double eta, int iterations, float gpu_mem, int verbose, int* landmarks) {
 	setbuf(stdout, NULL);
 
 	// Determine whether we are using an exact algorithm
-	if (N - 1 < 3 * perplexity) { 
-		printf("Perplexity ( = %i) too large for the number of data points (%i)!\n", perplexity, N); 
-		exit(1); 
+	if (N - 1 < 3 * perplexity) {
+		printf("Perplexity ( = %i) too large for the number of data points (%i)!\n", perplexity, N);
+		exit(1);
 	}
-	if(verbose > 0) printf("Using no_dims = %d, perplexity = %f, learning rate = %f, and theta = %f\n", no_dims, perplexity, eta, theta);
+	if (verbose > 0) printf("Using no_dims = %d, perplexity = %f, learning rate = %f, and theta = %f\n", no_dims, perplexity, eta, theta);
 
 	bool exact = (theta == .0) ? true : false;
 
@@ -129,8 +129,8 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
 	end = clock();
 
 	// Lie about the P-values
-	if (exact) { for (int i = 0; i < N * N; i++)        P[i] *= exageration; }
-	else { for (int i = 0; i < row_P[N]; i++) val_P[i] *= 12.0; }
+	if (exact) { for (int i = 0; i < N * N; i++)    P[i] *= exageration; }
+	else { for (int i = 0; i < row_P[N]; i++)		val_P[i] *= 12.0; }
 
 	// Initialize solution (randomly)
 	for (int i = 0; i < N * no_dims; i++) Y[i] = randn() * .0001;
@@ -144,7 +144,7 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
 
 		// Compute (approximate) gradient
 		if (exact) computeExactGradient(P, Y, N, no_dims, dY);
-		else computeGradient(P, row_P, col_P, val_P, Y, N, no_dims, dY, theta);
+		else computeGradient(P, row_P, col_P, val_P, Y, N, no_dims, dY, theta); // Why need P?
 
 		// Update gains
 		//for(int i = 0; i < N * no_dims; i++) gains[i] = (sign(dY[i]) != sign(uY[i])) ? (gains[i] + .2) : (gains[i] * .8);
@@ -164,6 +164,26 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
 			else      { for (int i = 0; i < row_P[N]; i++) val_P[i] /= 12.0; }
 		}
 		if (iter == mom_switch_iter) momentum = final_momentum;
+
+		// Save tSNE progress after each iteration
+		if (verbose > 2)
+		{
+			// Open file, write first 2 integers and then the data
+			FILE *h;
+			const int MAX_PATH = 256;
+			char interim_filename[MAX_PATH];
+			sprintf(interim_filename, "interim_%06i.dat", iter);
+			if ((h = fopen(interim_filename, "w + b")) == NULL) {
+				printf("Error: could not open data file.\n");
+				return;
+			}
+			fwrite(&N, sizeof(int), 1, h);
+			fwrite(&no_dims, sizeof(int), 1, h);
+			fwrite(Y, sizeof(double), N * no_dims, h);
+			fwrite(landmarks, sizeof(int), N, h);
+			fclose(h);
+			//printf("Wrote the %ith interim data matrix successfully!\n", iter);
+		}
 
 		// Print out progress
 		if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
@@ -201,17 +221,17 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
 
 void TSNE::runWithCenterOfMass(double* data, double* tsne_results, int_least64_t all_data_samples,
 	int_least64_t tsned_data_samples, int_least64_t data_space_dims, int_least64_t tsne_space_dims,
-	double perplexity, double theta, double eta, int_least64_t iterations, float gpu_mem, int verbose){
+	double perplexity, double theta, double eta, int_least64_t iterations, float gpu_mem, int verbose, int* landmarks){
 
 	//Cut the data to be t-sned
 	double* data_to_tsne = (double*)malloc(tsned_data_samples * data_space_dims * sizeof(double));
 	for (int i = 0; i < (tsned_data_samples* data_space_dims); ++i){ data_to_tsne[i] = data[i]; }
 
 	double* actual_tsne_results = (double*)malloc(tsned_data_samples * tsne_space_dims * sizeof(double));
-	run(data_to_tsne, tsned_data_samples, data_space_dims, actual_tsne_results, tsne_space_dims, perplexity, theta, eta, iterations, gpu_mem, verbose);
+	run(data_to_tsne, tsned_data_samples, data_space_dims, actual_tsne_results, tsne_space_dims, perplexity, theta, eta, iterations, gpu_mem, verbose, landmarks);
 	//run(data, all_data_samples, data_space_dims, tsne_results, tsne_space_dims, perplexity, theta, eta, iterations, gpu_mem);
 
-	for (int i = 0; i < tsned_data_samples * tsne_space_dims; ++i){tsne_results[i] = actual_tsne_results[i];}
+	for (int i = 0; i < tsned_data_samples * tsne_space_dims; ++i){ tsne_results[i] = actual_tsne_results[i]; }
 
 	int remaining_samples = all_data_samples - tsned_data_samples;
 
@@ -302,7 +322,6 @@ void TSNE::runWithCenterOfMass(double* data, double* tsne_results, int_least64_t
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
 void TSNE::computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta)
 {
-
 	// Construct space-partitioning tree on current map
 	SPTree* tree = new SPTree(D, Y, N);
 
@@ -311,6 +330,8 @@ void TSNE::computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp
 	double* pos_f = (double*)calloc(N * D, sizeof(double));
 	double* neg_f = (double*)calloc(N * D, sizeof(double));
 	if (pos_f == NULL || neg_f == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+
+
 	tree->computeEdgeForces(inp_row_P, inp_col_P, inp_val_P, N, pos_f);
 	for (int n = 0; n < N; n++) tree->computeNonEdgeForces(n, theta, neg_f + n * D, &sum_Q);
 
@@ -551,7 +572,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
 		computeSquaredEuclideanDistanceOnGpu(X, X, all_distances, N, D, gpu_mem, verbose);
 		tree->set_all_euclidean_distances(*all_distances);
 		end = clock();
-		if(verbose > 1) printf("Time spend in calculating all distances in GPU: %f\n", float(end - start) / CLOCKS_PER_SEC);
+		if (verbose > 1) printf("Time spent in calculating all distances in GPU: %f\n", float(end - start) / CLOCKS_PER_SEC);
 	}
 	else{
 		if (verbose > 0) printf("Using CPU to calculate distances during tree search\n");
@@ -627,7 +648,7 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
 		indices.clear();
 	}
 	end = clock();
-	if (verbose > 1) printf("Time spend in building tree and finding perplexities: %f\n", float(end - start) / CLOCKS_PER_SEC);
+	if (verbose > 1) printf("Time spent building tree and finding perplexities: %f\n", float(end - start) / CLOCKS_PER_SEC);
 
 	// Clean up memory
 	obj_X.clear();
@@ -768,8 +789,8 @@ void TSNE::computeSquaredEuclideanDistance(double* X, int N, int D, double* DD) 
 //For every iteration calculate on the GPU all N*N distances but put on the GPU memory only a portion.
 //Then copy that portion onto a CPU 2D vector in the correct place (this is done in the EuclideanDistances.set_all_euclidean_distances function).
 //It is assumed that there is enough RAM to hold N*N floats
-void TSNE::computeSquaredEuclideanDistanceOnGpu(double* data_X, double* data_Y, EuclideanDistances* distances, int_least64_t N, int_least64_t D, 
-												float gpu_mem, int verbose){
+void TSNE::computeSquaredEuclideanDistanceOnGpu(double* data_X, double* data_Y, EuclideanDistances* distances, int_least64_t N, int_least64_t D,
+	float gpu_mem, int verbose){
 	int_least64_t size_in = N * D;
 
 	int num_of_cuda_devices = 0;
@@ -801,7 +822,7 @@ void TSNE::computeSquaredEuclideanDistanceOnGpu(double* data_X, double* data_Y, 
 	h_in_X = (float*)malloc(size_in * sizeof(float));
 	float* h_in_Y;
 	h_in_Y = (float*)malloc(size_in * sizeof(float));
-	
+
 	//Initialise matrices on the host (casting data from double to float to allow the GPU to do work)
 	for (int i = 0; i<N; i++){
 		for (int j = 0; j<D; j++){
@@ -951,7 +972,7 @@ void TSNE::save_data(double* data, int* landmarks, double* costs, int n, int d, 
 	fwrite(landmarks, sizeof(int), n, h);
 	fwrite(costs, sizeof(double), n, h);
 	fclose(h);
-	if(verbose > 0) printf("Wrote the %i x %i data matrix successfully!\n\n", n, d);
+	if (verbose > 0) printf("Wrote the %i x %i data matrix successfully!\n\n", n, d);
 }
 
 
@@ -998,7 +1019,7 @@ int main() {
 		if (seed == 0){
 			seed = origN;
 		}
-		tsne->runWithCenterOfMass(data, Y, origN, seed, D, no_dims, perplexity, theta, eta, iterations, gpu_mem, verbose);
+		tsne->runWithCenterOfMass(data, Y, origN, seed, D, no_dims, perplexity, theta, eta, iterations, gpu_mem, verbose, landmarks);
 
 		// Save the results
 		tsne->save_data(Y, landmarks, costs, N, no_dims, verbose);

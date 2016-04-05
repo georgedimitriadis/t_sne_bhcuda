@@ -42,29 +42,29 @@ static inline double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.
 class TSNE
 {
 public:
-	void run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, double eta, int iterations, float gpu_mem, int verbose);
+	void run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, double eta, int iterations, float gpu_mem, int verbose, int* landmarks);
 	void runWithCenterOfMass(double* data, double* tsne_results, int_least64_t data_samples,
-							 int_least64_t tsne_samples, int_least64_t data_dims, int_least64_t tsne_dims,
-							 double perplexity, double theta, double eta, int_least64_t iterations, float gpu_mem, int verbose);
+		int_least64_t tsne_samples, int_least64_t data_dims, int_least64_t tsne_dims,
+		double perplexity, double theta, double eta, int_least64_t iterations, float gpu_mem, int verbose, int* landmarks);
 	bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity,
-					double* eta, int* iterations, int* seed, float* gpu_mem, int* verbose, int* rand_seed);
+		double* eta, int* iterations, int* seed, float* gpu_mem, int* verbose, int* rand_seed);
 	void save_data(double* data, int* landmarks, double* costs, int n, int d, int verbose);
 	void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N); // should be static!
 	void zeroMean(double* X, int N, int D);
 	void normalize(double* X, int N, int D);
 
 private:
-	void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, 
-						 int N, int D, double* dC, double theta);
+	void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y,
+		int N, int D, double* dC, double theta);
 	void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
 	double evaluateError(double* P, double* Y, int N, int D);
 	double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta);
 	void computeGaussianPerplexity(double* X, int N, int D, double* P, double perplexity);
-	void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, 
-								   double perplexity, int K, float gpu_mem, int verbose);
+	void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P,
+		double perplexity, int K, float gpu_mem, int verbose);
 	void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
-	void computeSquaredEuclideanDistanceOnGpu(double* data_X, double* data_Y, EuclideanDistances* distances, int_least64_t N, 
-											  int_least64_t D, float gpu_mem, int verbose);
+	void computeSquaredEuclideanDistanceOnGpu(double* data_X, double* data_Y, EuclideanDistances* distances, int_least64_t N,
+		int_least64_t D, float gpu_mem, int verbose);
 	double randn();
 };
 

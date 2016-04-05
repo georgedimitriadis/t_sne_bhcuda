@@ -1,18 +1,22 @@
 package:
  name: t_sne_bhcuda
- version: 0.1.6
+ version: 0.2.0
 
 
 
 source:
- fn: t_sne_bhcuda-0.1.6.zip
- md5: 24f54be6eaf94f9ffb5dee197700d276
- url: https://pypi.python.org/packages/source/t/t_sne_bhcuda/t_sne_bhcuda-0.1.6.zip
+ fn: t_sne_bhcuda-0.2.0.zip
+ md5:
+ url: https://pypi.python.org/packages/source/t/t_sne_bhcuda/t_sne_bhcuda-0.2.0.zip
 
 requirements:
  build:
   - python
  run:
   - python
+  - bokeh
+  - numpy
+  - scipy
+  - pandas
 
 

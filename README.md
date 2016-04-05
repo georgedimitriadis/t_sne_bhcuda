@@ -1,6 +1,6 @@
 #T-SNE with CUDA and Barnes Hut (with Python wrapper)
 
-This is an extension of the C++ t-sne with barnes-hut algorithm written by Laurens van der Maaten. The original code can be found here: [lvdmaaten/bhtsne](https://github.com/lvdmaaten/bhtsne/). There are four main differences.
+This is an extension of the C++ t-sne with barnes-hut algorithm written by Laurens van der Maaten. The original code can be found here: [lvdmaaten/bhtsne](https://github.com/lvdmaaten/bhtsne/). There are five main differences.
 
 
 1. The cuda code targets not the actual t-sne code but the part that generates the perplexities. More specifically it implements a fast cuda algorithm for calculating euclidean distances. That way the most time consuming step in the barnes-hut algorithm (calculating the euclidean distances of sample pairs) becomes much fater.
@@ -15,8 +15,11 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 
 3. For the cases where the amount of samples is too large (i.e the 4\*N\*N distance matrix bytes do not fit in RAM) the algorithm implements a way to use part of the samples as a template for the rest. If the seed parameter is set to any number X > 0 and < Nsamples then only the first X samples will go through the t-sne code. For the remaining N - X samples the following procedure is followed. Each one of the remaining samples has its distance to all the X samples calculated (on the GPU). The 5 closest samples are selected and their t-sne coordinates averaged. The new sample coordinates on the t-sne space are set to these averages. This procedure assumes that the N - X samples that were not part of the original t-sne do not form part of any extra clusters. In order for this assumption to be satisfied a good precaution is to randomize the sample order before the data are given to the algorithm. 
  
-4. The final (and most minor change) is a small re-writing of the python wrapper (originaly developed by Pontus Stenetorp). Now you can use it to generate the data.dat file or read the results.dat file without actually running the t-sne code. The data.dat file also carries a header that passes the required parameters into the t_sne_gpu executable. It also allows the user to call the sklearn implementation of t-sne (no cuda, no C++ = quite more slow) in case something has gone wrong and the C++ executable does not run.
+4. The fourth difference is a small re-writing of the python wrapper (originaly developed by Pontus Stenetorp). Now you can use it to generate the data.dat file or read the results.dat file without actually running the t-sne code. The data.dat file also carries a header that passes the required parameters into the t_sne_gpu executable. It also allows the user to call the sklearn implementation of t-sne (no cuda, no C++ = quite more slow) in case something has gone wrong and the C++ executable does not run.
 
+5. The final difference is that now the C++ code allows the output (saved as interim data files) of the t-sne process at every itteration. This can be turned on by seting the verbose parameter to bigger than 2.
+
+On top of the extensions in the C++ there is python code to use t-sne to do cluster spikes and to also run a gui that allows manual clustering based on the t-sne results.
 
 ##Notes for use
 ###Installation
@@ -29,7 +32,8 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 ###Use
 Read the example in the bhtsne_cuda script on how to call t_sne. A very extensive documentation for the t-sne specific parameters can also be found in the sklearn.manifold.TSNE package.
 
-Not t-sne related parameters are the gpu_mem and seed. The gpu_mem needs to be set between 0 and 1 and will control the percentage of GPU memory (from the amount available) each GPU cycle will use. If the number of distances calculated needs more than available*gpu_mem bytes then the computation is split in cycles that fit into that memory. 0 means no GPU is used (the code defaults to the original barnes hat algorithm on the CPU).
+Not t-sne related parameters are the gpu_mem, the seed and verbose. The gpu_mem needs to be set between 0 and 1 and will control the percentage of GPU memory (from the amount available) each GPU cycle will use. If the number of distances calculated needs more than available*gpu_mem bytes then the computation is split in cycles that fit into that memory. 0 means no GPU is used (the code defaults to the original barnes hat algorithm on the CPU).
 The seed is the number of samples from the total data samples that will actually go through t-sne. It needs to be between 0 and Nsamples. 0 (or Nsamples) means just run all the samples normally through t-sne. Any other number X means the remaining N-X samples are placed on the t-sne space through a process described in point 3 above.
+Verbose will both define the amount of feedback t-sne will produce and (if set > 2) will save all intermediate iterations of t-sne in seperate files (good for making movies of the t-sne process).
 
 If you want to use t-sne on spikes as detected by the spikedetect part of the phy module then check out the t_sne_spikes script. The result of this operation is a 2 x Nspikes array that will be saved in the same directory that the .kwik file you provided to the function is in. The phy module will be able to detect this array (saved in .npy format) and display in its GUI the results of the t-sne operation superimposing clustering information if it exists.
