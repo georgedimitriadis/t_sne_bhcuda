@@ -19,7 +19,7 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 
 5. The final difference is that now the C++ code allows the output (saved as interim data files) of the t-sne process at every itteration. This can be turned on by seting the verbose parameter to bigger than 2.
 
-On top of the extensions in the C++ there is python code to use t-sne to do cluster spikes and to also run a gui that allows manual clustering based on the t-sne results.
+On top of the extensions in the C++ there is python code to use t-sne to do clustering of neural spikes and to also run a gui that allows manual clustering based on the t-sne results.
 
 ##Notes for use
 ###Installation

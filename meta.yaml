@@ -6,7 +6,7 @@ package:
 
 source:
  fn: t_sne_bhcuda-0.2.0.zip
- md5:
+ md5: ed6c411743860c7668185d6164f7d72c
  url: https://pypi.python.org/packages/source/t/t_sne_bhcuda/t_sne_bhcuda-0.2.0.zip
 
 requirements:
