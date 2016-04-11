@@ -1,13 +1,13 @@
 package:
  name: t_sne_bhcuda
- version: 0.2.0
+ version: 0.2.1
 
 
 
 source:
- fn: t_sne_bhcuda-0.2.0.zip
- md5: ed6c411743860c7668185d6164f7d72c
- url: https://pypi.python.org/packages/source/t/t_sne_bhcuda/t_sne_bhcuda-0.2.0.zip
+ fn: t_sne_bhcuda-0.2.1.zip
+ md5: e945b68effce3fe35b5e4ec0490388cf
+ url: https://pypi.python.org/packages/source/t/t_sne_bhcuda/t_sne_bhcuda-0.2.1.zip
 
 requirements:
  build:
