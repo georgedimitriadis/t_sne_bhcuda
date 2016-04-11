@@ -1,4 +1,6 @@
-#T-SNE with CUDA and Barnes Hut (with Python wrapper)
+#T-SNE with CUDA and Barnes Hut (with Python wrapper) with a spike sorting application
+
+## T-sne code
 
 This is an extension of the C++ t-sne with barnes-hut algorithm written by Laurens van der Maaten. The original code can be found here: [lvdmaaten/bhtsne](https://github.com/lvdmaaten/bhtsne/). There are five main differences.
 
@@ -19,7 +21,20 @@ The cuda was written using CUDA 7.5 (January 2016) but should work with anything
 
 5. The final difference is that now the C++ code allows the output (saved as interim data files) of the t-sne process at every itteration. This can be turned on by seting the verbose parameter to bigger than 2.
 
+## Spike-sorting application
 On top of the extensions in the C++ there is python code to use t-sne to do clustering of neural spikes and to also run a gui that allows manual clustering based on the t-sne results.
+
+Specifically the spike sorting application (t_sne_spikes.py, tsne_cluster.py and the helper functions in spike_heatmap.py) is meants to extend the capabilities of the [phy module](http://phy.readthedocs.org/en/latest/) by adding t-sne visualization and t-sne based manual sorting capabilities. It assumes that phy has been used to detect the spikes in a dataset and the t_sne_spikes function uses the masked PCA components phy detect generates to t-sne the spikes. At a second step the gui_manual_cluster function in the tsne_cluster.py script can be called with the t-sne results to allow for manual sorting of the spikes using the 2D embedding of the spikes. The GUI allows the user to select groups of spikes and deside if this is a unit by checking:
+
+1. the time plot of all channels averaged over the selected spikes
+
+2. the autocorrelogram of the selected spikes
+
+3. the heatmap of the peak to peak amplitude of all channels averaged over the selected spikes (requires the use of the .prb probe file that has been used by phy to detect the spikes).
+
+The GUI saves a pandas dataframe (as a pickle file) with the name given to every cluster, the number of spikes in it and the indices of the spikes (in the t-sne dataset).
+The GUI is generated using the bokeh library and requires running a bokeh server (once bokeh in installed do 'bokeh serve' in a command prompt).
+The python code is kept at the level of a number of functions (no object orientation) to allow users to 'easily' add functionality to the GUI.  
 
 ##Notes for use
 ###Installation
@@ -36,4 +51,4 @@ Not t-sne related parameters are the gpu_mem, the seed and verbose. The gpu_mem 
 The seed is the number of samples from the total data samples that will actually go through t-sne. It needs to be between 0 and Nsamples. 0 (or Nsamples) means just run all the samples normally through t-sne. Any other number X means the remaining N-X samples are placed on the t-sne space through a process described in point 3 above.
 Verbose will both define the amount of feedback t-sne will produce and (if set > 2) will save all intermediate iterations of t-sne in seperate files (good for making movies of the t-sne process).
 
-If you want to use t-sne on spikes as detected by the spikedetect part of the phy module then check out the t_sne_spikes script. The result of this operation is a 2 x Nspikes array that will be saved in the same directory that the .kwik file you provided to the function is in. The phy module will be able to detect this array (saved in .npy format) and display in its GUI the results of the t-sne operation superimposing clustering information if it exists.
+If you want to use t-sne on spikes as detected by the spikedetect part of the phy module then check out the t_sne_spikes script. The result of this operation is a 2 x Nspikes array that will be saved in the same directory that the .kwik file you provided to the function is in. The phy module will be able to detect this array (saved in .npy format) and display in its GUI the results of the t-sne operation superimposing clustering information if it exists. Or you can use the gui_manual_cluster function to do a fully manual spike sorting.

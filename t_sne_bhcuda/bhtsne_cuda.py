@@ -151,6 +151,7 @@ def t_sne(samples, use_scikit=False, files_dir=None, results_filename='result.da
     else:  # using the C++/cuda implementation
         save_data_for_tsne(samples, files_dir, data_filename, theta, perplexity,
                            eta, no_dims, iterations, seed, gpu_mem, verbose, randseed)
+        del samples
         # Call t_sne_bhcuda and let it do its thing
         with Popen([_find_exe_dir(), ], cwd=files_dir, stdout=PIPE, bufsize=1, universal_newlines=True) \
                 as t_sne_bhcuda_p:

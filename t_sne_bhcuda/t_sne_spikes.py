@@ -72,6 +72,11 @@ def t_sne_spikes(kwx_file_path, hdf5_dir_to_pca=r'channel_groups/1/features_mask
                   format(dirname(kwx_file_path)))
         path_to_save_tmp_data = dirname(kwx_file_path)
 
+    del pca_and_masks
+    del masks
+    del pca_features
+    del masked_pca_features
+
     t0 = time.time()
     t_tsne = TSNE.t_sne(data_for_tsne, use_scikit=use_scikit,files_dir=path_to_save_tmp_data,
                         no_dims=2, perplexity=perplexity, eta=eta, theta=theta, iterations=iterations, seed=seed,
