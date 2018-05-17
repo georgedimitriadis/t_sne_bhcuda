@@ -1,4 +1,11 @@
-#T-SNE with CUDA and Barnes Hut (with Python wrapper) with a spike sorting application
+
+```diff
+- ========================================================================================================
+```
+# THIS CODE IS DEPRICATED. USE THE NEW spikesorting_tsne PACKAGE. SEE https://georgedimitriadis.github.io/spikesorting_tsne/
+```diff
+- =======================================================================================================
+```
 
 ## T-sne code
 
